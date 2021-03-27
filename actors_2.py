@@ -5,6 +5,7 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField
 from wtforms.validators import Required
 from data import ACTORS
+import stripe
 
 app = Flask(__name__)
 # Flask-WTF requires an enryption key - the string can be anything
@@ -15,13 +16,24 @@ Bootstrap(app)
 # instead of using a CDN
 app.config['BOOTSTRAP_SERVE_LOCAL'] = True
 
+stripe_keys = {
+  'secret_key': 'sk_test_51HevTDEdTRA1Rei30P0yeyx7IRA7Jr8NdcE5hGypfJ3Z3fNPlJzCdxnpavq2fcfmbpA9YpJhMjXGLtInl8UNcbuy00RVMX4sCF',
+  'publishable_key': 'pk_test_51HevTDEdTRA1Rei3c76wSKc8hFjcEumOGFDTOsLgSKILa7jzv2xmy9sKZukoaypxeCLJh8Ubyp2lPQeHMJbUTZdi00Zjioxafj'
+}
+
+stripe.api_key = stripe_keys['secret_key']
+
 # with Flask-WTF, each web form is represented by a class
 # "NameForm" can change; "(FlaskForm)" cannot
 # see the route for "/" and "index.html" to see how this is used
 class NameForm(FlaskForm):
-    name = StringField('Which actor is your favorite?', validators=[Required()])
+    name = StringField('What\'s your name?', validators=[Required()])
+    partnersName = StringField('What\'s your partner\'s name?', validators=[Required()])
+    cheaterName = StringField('What\'s of the person your partner is cheating with?', validators=[Required()])
     submit = SubmitField('Submit')
 
+class CheckoutButton(FlaskForm):
+    submit = SubmitField('Buy Another Story')
 # define functions to be used by the routes
 
 # retrieve all the names from the dataset and put them into a list
@@ -69,31 +81,22 @@ def index():
     form = NameForm()
     message = ""
     if form.validate_on_submit():
-        name = form.name.data
-        if name in names:
-            # empty the form field
-            form.name.data = ""
-            id = get_id(ACTORS, name)
-            # redirect the browser to another route and template
-            return redirect( url_for('actor', id=id) )
-        else:
-            message = "That actor is not in our database."
+        return redirect( url_for('actor', id=form.name.data,
+        partnersName=form.partnersName.data, cheaterName=form.cheaterName.data ) )
     return render_template('index.html', names=names, form=form, message=message)
 
+@app.route('/name/<id>/<partnersName>/<cheaterName>/')
+def actor(id, partnersName, cheaterName):
+    form = CheckoutButton()
+    story = "{name} walks into a room as they hear {partnersName} moan to {name} \
+            surpise their best friend {cheaterName} was on top of {partnersName}".format(
+                name=id, partnersName=partnersName, cheaterName=cheaterName
+            )
+    return render_template('free-story.html', story=story, form=form, key=stripe_keys['publishable_key'])
 
-@app.route('/actor/<id>')
-def actor(id):
-    # run function to get actor data based on the id in the path
-    id, name, photo = get_actor(ACTORS, id)
-    if name == "Unknown":
-        # redirect the browser to the error template 
-        return render_template('404.html'), 404
-    else:
-        # pass all the data for the selected actor to the template
-        return render_template('actor.html', id=id, name=name, photo=photo)
-
-
-# routes to handle errors - they have templates too
+@app.route('/checkout', methods=['GET', 'POST'])
+def checkout():
+    return render_template('checkout.html')
 
 @app.errorhandler(404)
 def page_not_found(e):

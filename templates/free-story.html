@@ -16,15 +16,18 @@ Best Movie Actors
 <div class="container">
   <div class="row">
     <div class="col-xs-12">
+			{{story}}
 
-      <h1>Welcome to the best movie actors Flask example!</h1>
-
-      <p class="lead">This is the index page for an example Flask app using Bootstrap and WTForms.</p>
-				{{ form.csrf_token }}
-      	{{ wtf.quick_form(form) }}
-
-      <p class="space-above"><strong>{{ message }}</strong></p>
-
+			<form action="{{ url_for('checkout') }}" method="post">
+      <script
+        src="https://checkout.stripe.com/checkout.js"
+        class="stripe-button"
+        data-key="{{ key }}"
+        data-description="A Flask Charge"
+        data-amount="500"
+        data-locale="auto">
+      </script>
+    </form>
 
     </div>
   </div>
